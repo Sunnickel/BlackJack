@@ -166,3 +166,5 @@ if __name__ == '__main__':
         play_game()
         if len(players) == 1:
             playing = False
+        if len(deck) == 0:
+            deck = get_deck()
