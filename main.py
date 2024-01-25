@@ -1,29 +1,28 @@
-import itertools, random
-from colorama import init as colorama_init
-from colorama import Fore
-from colorama import Style
+import itertools
+import random
 
 from Player import *
 
 players = []
+bank: Player = Player()
 playing = True
 deck = None
 
 
 def get_deck():
+    global deck
     deck = list(itertools.product(range(2, 15), ['Spade', 'Heart', 'Diamond', 'Club']))
-    random.shuffle(deck)
-    random.shuffle(deck)
     random.shuffle(deck)
     return deck
 
 
 def start():
-    bank = Player()
-    playerNum = ""
-    while not playerNum.isnumeric():
-        playerNum = input("How many players are playing? $ ")
-    for i in range(int(playerNum)):
+    player_num = 0
+    while not int(player_num) > 0:
+        player_num = input("How many players are playing? $ ")
+        if not player_num.isdigit():
+            player_num = 0
+    for i in range(int(player_num)):
         players.append(Player())
     bank.name = "Bank"
     players.append(bank)
@@ -36,54 +35,55 @@ def start():
 
 
 def give_card(player: Player, hidden=False):
-    player.set_hand(Card(deck[0][0], deck[0][1], hidden=hidden))
+    player.add_to_hand(Card(deck[0], hidden=hidden))
     deck.pop(0)
 
 
-def print_hand(player: Player, hidden=True):
+def print_hand(player: Player):
     print(player.name)
     hand = player.hand
     output = ""
     for i in range(4):
+        card: Card
         for card in hand:
             output += card.get_ascii()[i]
         output += "\n"
     print(output)
-    if hidden:
-        print(f"Value: {player.get_value()}")
-    else:
-        print(f"Value: {player.get_full_value()}")
+    print(f"Value: {player.get_value()}")
 
 
 def over_21(player: Player):
-    if player.get_full_value() > 21:
-        return True
+    return player.get_value(True) > 21
 
 
-def bid_money(player: Player):
-    if player.name == "Bank":
-        return
-    hasEnough = False
-    while not hasEnough:
-        player.bid = (int)(input(f"Set your bids {player.name} $ "))
-        if player.bid > player.money:
-            print("You don't have enough money!")
-        elif player.bid <= 0:
-            print("You need to bids at least 1$!")
-        else:
-            hasEnough = True
+def bid_money():
+    for player in players:
+        if player.name == "Bank":
+            continue
+        if player.money == 0:
+            players.remove(player)
+        print(players)
+        print(f"{player.name}'s Money: {player.money}")
+        has_enough = False
+        if len(players) == 1:
+            exit("All players are broke af")
+        while not has_enough:
+            player.bid = int(input(f"Set your bids {player.name} $ "))
+            if player.bid > player.money:
+                print("You don't have enough money!")
+            elif player.bid <= 0:
+                print("You need to bids at least 1$!")
+            else:
+                has_enough = True
 
 
-def push(player: Player):
-    player.money += player.bid
-
-
-def win(player: Player):
-    player.money += player.bid * 2
-
-
-def black_jack(player: Player):
-    player.money += player.bid * 2.5
+def end_round(player: Player, ending: str):
+    if ending == "push":
+        player.money += player.bid
+    elif ending == "win":
+        player.money += player.bid * 2
+    elif ending == "blackJack":
+        player.money += player.bid * 2.5
 
 
 def pause():
@@ -92,44 +92,33 @@ def pause():
 
 
 def play_game():
-    for player in players:
-        if player.name == "Bank":
-            continue
-        if player.money == 0:
-            players.remove(player)
-        print(f"{player.name}'s Money: {player.money}")
-        bid_money(player)
+    player: Player
+    bid_money()
     pause()
     for player in players:
         player.money -= player.bid
         for player1 in players:
             print_hand(player1)
-        if player.name == "Bank" or players[-1].get_full_value() == 21:
+        if player == bank or bank.get_value() == 21:
             bank_logic()
-            print_hand(player, False)
+            print_hand(bank)
+            player2: Player
             for player2 in players:
-                if player2.name == "Bank":
+                if player2 == bank:
                     continue
-                print(f"{player2.name}'s Value: {player2.get_full_value()}")
-            for player3 in players:
-                if player3.name == "Bank":
-                    continue
-
+                print(f"{player2.name}'s Value: {player2.get_value(True)}")
             continue
         turn = True
-        if player.get_value() == 21:
-            # TODO: BLACKJACK
+        if player.get_value(True) == 21:
             player.blackJack = True
             continue
         while turn:
-            name = player.name
-
             print("Options:\n"
                   "     [0] Double\n"
                   "     [1] Split\n"
                   "     [2] Stand\n"
-                  "     [3] Hit\n")
-            choice = input(f"{name} $ ")
+                  "     [3] Hit\n")  # Options
+            choice = input(f"{player.name} $ ")
             if choice == "0":
                 player.bid *= 2
                 give_card(player, True)
@@ -138,7 +127,6 @@ def play_game():
 
             elif choice == "1":
                 print("Hab keine Lust auf dieses Feature :D")
-
 
             elif choice == "2":
                 turn = False
@@ -156,18 +144,18 @@ def play_game():
 
 
 def bank_logic():
-    bank: Player = players[-1]
-    while bank.get_full_value() < 17:
-        give_card(bank, False)
+    while bank.get_value() < 17:
+        give_card(bank)
+    player: Player
     for player in players:
         if player.blackJack:
-            black_jack(player)
-        elif player.get_full_value() > 21:
+            end_round(player, "blackJack")
+        elif player.get_value() > 21:
             continue
-        elif bank.get_value() < player.get_full_value():
-            win(player)
-        elif bank.get_value() == player.get_full_value():
-            push(player)
+        elif bank.get_value() < player.get_value(True):
+            end_round(player, "win")
+        elif bank.get_value() == player.get_value(True):
+            end_round(player, "push")
     pause()
 
 

@@ -17,14 +17,16 @@ class Player:
             "11": 10,
             "12": 10,
             "13": 10,
-            "14": [1, 11]
         }
         self.bid = 0
         self.blackJack = False
 
-    def get_value(self):
+    def get_value(self, show_All=False):
         value = 0
+        card: Card
         for card in self.hand:
+            if card.hidden and not show_All:
+                continue
             if card.get_value() == 14:
                 if value + 10 > 21:
                     value += 1
@@ -34,26 +36,14 @@ class Player:
             value += self.cardInfo[f"{card.get_value()}"]
         return value
 
-    def get_full_value(self):
-        value = 0
-        for card in self.hand:
-            if card.get_full_value() == 14:
-                if value + 10 > 21:
-                    value += 1
-                else:
-                    value += 11
-                continue
-            value += self.cardInfo[f"{card.get_full_value()}"]
-        return value
-
-    def set_hand(self, card):
+    def add_to_hand(self, card):
         self.hand.append(card)
 
 
 class Card:
-    def __init__(self, value: int, type: str, hidden=False):
-        self.value = value
-        self.type = type
+    def __init__(self, card, hidden=False):
+        self.value = card[0]
+        self.type = card[1]
         self.types = {
             "Spade": "♠",
             "Heart": "♥",
@@ -81,15 +71,19 @@ class Card:
         if not self.hidden:
             type = self.types[self.type]
             value = self.cardInfo[self.value]
+            card = [
+                "┌───┐",
+                f"│ {value} │",
+                f"│ {type} │",
+                "└───┘"
+            ]
         else:
-            type = "?"
-            value = "?"
-        card = [
-            "┌───┐",
-            f"│ {value} │",
-            f"│ {type} │",
-            "└───┘"
-        ]
+            card = [
+                "┌───┐",
+                "│ ? │",
+                "│ ? │",
+                "└───┘"
+            ]
 
         return card
 
@@ -98,6 +92,3 @@ class Card:
             return self.value
         else:
             return 0
-
-    def get_full_value(self):
-        return self.value
