@@ -1,5 +1,6 @@
 import itertools
 import random
+from typing import List, Any
 
 from Player import *
 
@@ -12,6 +13,8 @@ deck = None
 def get_deck():
     global deck
     deck = list(itertools.product(range(2, 15), ['Spade', 'Heart', 'Diamond', 'Club']))
+    for i in range(10):
+        deck += list(itertools.product(range(2, 15), ['Spade', 'Heart', 'Diamond', 'Club']))
     random.shuffle(deck)
     return deck
 
@@ -26,9 +29,6 @@ def start():
         players.append(Player())
     bank.name = "Bank"
     players.append(bank)
-    for i in range(2):
-        for player in players:
-            give_card(player)
     for i in range(len(players)):
         if (players[i]).name is None:
             (players[i]).name = input(f"What's your name Player{i + 1}? $ ")
@@ -92,9 +92,16 @@ def pause():
 
 
 def play_game():
+    players.remove(bank)
+    players.append(bank)
     player: Player
     bid_money()
     pause()
+    for player1 in players:
+        player1.clear_hand()
+    for i in range(2):
+        for player1 in players:
+            give_card(player1)
     for player in players:
         player.money -= player.bid
         for player1 in players:
@@ -125,8 +132,8 @@ def play_game():
                 turn = False
                 pause()
 
-            elif choice == "1":
-                print("Hab keine Lust auf dieses Feature :D")
+            elif choice == "1" and player.hand[0].get_value() == player.hand[1].get_value():
+                split_hand(player)
 
             elif choice == "2":
                 turn = False
@@ -141,6 +148,32 @@ def play_game():
             pause()
             for player1 in players:
                 print_hand(player1)
+
+
+def split_hand(player: Player):
+    if len(player.hand) != 2:
+        print("Cannot split hand, it must have exactly 2 cards.")
+        return
+
+    if player.hand[0].get_value() != player.hand[1].get_value():
+        print("Cannot split hand, the two cards must have the same value.")
+        return
+
+    # Remove the first card from the player's hand and create a new hand with it
+    new_hand = Player()
+    new_hand.add_to_hand(player.hand.pop(0))
+    new_hand.name = player.name
+    players.append(new_hand)
+
+    # Set the player's bid for the new hand to the original bid
+    new_hand.bid = player.bid
+
+    # The player now has two hands, so we need to give them a new card for the second hand
+    give_card(new_hand)
+
+    # Print the updated hands for the player
+    print_hand(player)
+    print_hand(new_hand)
 
 
 def bank_logic():
@@ -166,5 +199,10 @@ if __name__ == '__main__':
         play_game()
         if len(players) == 1:
             playing = False
-        if len(deck) == 0:
-            deck = get_deck()
+
+
+        # Add a check for splitting here
+        for player in players:
+            if player.name != "Bank" and len(player.hand) == 2 and player.hand[0].get_value() == player.hand[
+                1].get_value():
+                split_hand(player)

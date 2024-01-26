@@ -39,6 +39,9 @@ class Player:
     def add_to_hand(self, card):
         self.hand.append(card)
 
+    def clear_hand(self):
+        self.hand = []
+
 
 class Card:
     def __init__(self, card, hidden=False):
